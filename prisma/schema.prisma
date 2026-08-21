@@ -1,0 +1,364 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum RoomStatus {
+  CLEAN
+  DIRTY
+  INSPECTED
+  OUT_OF_SERVICE
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+enum ReservationSource {
+  DIRECT_WEBSITE
+  OTA_BOOKING
+  OTA_EXPEDIA
+  OTA_AIRBNB
+  MANUAL
+  CHANNEL_MANAGER
+}
+
+enum PricingType {
+  PER_NIGHT
+  PER_STAY
+  PER_PERSON
+  PER_PERSON_PER_NIGHT
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  RECEPTIONIST
+  HOUSEKEEPER
+}
+
+enum CancellationPolicy {
+  FREE_CANCELLATION
+  MODERATE
+  STRICT
+  NON_REFUNDABLE
+}
+
+enum MealPlan {
+  ROOM_ONLY
+  BED_AND_BREAKFAST
+  HALF_BOARD
+  FULL_BOARD
+  ALL_INCLUSIVE
+}
+
+// ============================================================
+// CORE MODELS
+// ============================================================
+
+model Tenant {
+  id               String   @id @default(cuid())
+  name             String
+  subdomain        String   @unique
+  customDomain     String?  @unique @map("custom_domain")
+  // Branding
+  brandingConfig   Json     @default("{}") @map("branding_config")
+  // Contact
+  email            String?
+  phone            String?
+  address          String?
+  city             String?
+  country          String?
+  postalCode       String?  @map("postal_code")
+  latitude         Float?
+  longitude        Float?
+  // Policies
+  checkInTime      String   @default("15:00") @map("check_in_time")
+  checkOutTime     String   @default("11:00") @map("check_out_time")
+  cancellationText String?  @map("cancellation_text")
+  termsUrl         String?  @map("terms_url")
+  privacyUrl       String?  @map("privacy_url")
+  impressumUrl     String?  @map("impressum_url")
+  // Tax & Currency
+  currency         String   @default("EUR")
+  taxSettings      Json     @default("{}") @map("tax_settings")
+  timezone         String   @default("Europe/Berlin")
+  // Metadata
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  roomTypes     RoomType[]
+  ratePlans     RatePlan[]
+  addOns        AddOn[]
+  reservations  Reservation[]
+  guests        GuestProfile[]
+  users         User[]
+
+  @@map("tenants")
+}
+
+model RoomType {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  name           String
+  category       String   // Single, Double, Suite, Apartment, Parking, Workspace
+  description    String?  @db.Text
+  baseOccupancy  Int      @default(2) @map("base_occupancy")
+  maxOccupancy   Int      @default(2) @map("max_occupancy")
+  amenities      Json     @default("[]") // ["WiFi", "TV", "MiniBar", "Balcony"]
+  images         Json     @default("[]") // Array of image URLs
+  size           Float?   // Square meters
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rooms        Room[]
+  ratePlans    RatePlan[]
+  dailyRates   DailyRate[]
+  reservations Reservation[]
+
+  @@index([tenantId])
+  @@map("room_types")
+}
+
+model Room {
+  id           String     @id @default(cuid())
+  roomTypeId   String     @map("room_type_id")
+  roomNumber   String     @map("room_number")
+  floor        Int        @default(1)
+  status       RoomStatus @default(CLEAN)
+  notes        String?    @db.Text
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  roomType     RoomType      @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([roomTypeId, roomNumber])
+  @@index([roomTypeId])
+  @@map("rooms")
+}
+
+model RatePlan {
+  id                   String             @id @default(cuid())
+  tenantId             String             @map("tenant_id")
+  roomTypeId           String             @map("room_type_id")
+  name                 String             // "Standard", "Non-refundable", "Early Bird"
+  description          String?            @db.Text
+  cancellationPolicy   CancellationPolicy @default(FREE_CANCELLATION) @map("cancellation_policy")
+  mealPlan             MealPlan           @default(ROOM_ONLY) @map("meal_plan")
+  priceModifier        Float              @default(1.0) @map("price_modifier") // Multiplier on base price
+  isActive             Boolean            @default(true) @map("is_active")
+  sortOrder            Int                @default(0) @map("sort_order")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roomType     RoomType      @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@index([tenantId])
+  @@index([roomTypeId])
+  @@map("rate_plans")
+}
+
+model DailyRate {
+  id                  String   @id @default(cuid())
+  roomTypeId          String   @map("room_type_id")
+  date                DateTime @db.Date
+  price               Float
+  availableCount      Int      @map("available_count")
+  minStay             Int      @default(1) @map("min_stay")
+  maxStay             Int      @default(365) @map("max_stay")
+  closedToArrival     Boolean  @default(false) @map("closed_to_arrival")
+  closedToDeparture   Boolean  @default(false) @map("closed_to_departure")
+  stopSell            Boolean  @default(false) @map("stop_sell")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  roomType  RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeId, date])
+  @@index([roomTypeId, date])
+  @@map("daily_rates")
+}
+
+model AddOn {
+  id            String      @id @default(cuid())
+  tenantId      String      @map("tenant_id")
+  name          String
+  description   String?     @db.Text
+  price         Float
+  pricingType   PricingType @default(PER_STAY) @map("pricing_type")
+  isActive      Boolean     @default(true) @map("is_active")
+  sortOrder     Int         @default(0) @map("sort_order")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservationAddOns   ReservationAddOn[]
+
+  @@index([tenantId])
+  @@map("add_ons")
+}
+
+model Reservation {
+  id                 String            @id @default(cuid())
+  tenantId           String            @map("tenant_id")
+  reservationNumber  String            @unique @map("reservation_number")
+  guestId            String            @map("guest_id")
+  roomTypeId         String            @map("room_type_id")
+  ratePlanId         String?           @map("rate_plan_id")
+  assignedRoomId     String?           @map("assigned_room_id")
+  checkIn            DateTime          @map("check_in") @db.Date
+  checkOut           DateTime          @map("check_out") @db.Date
+  adults             Int               @default(1)
+  children           Int               @default(0)
+  status             ReservationStatus @default(CONFIRMED)
+  source             ReservationSource @default(DIRECT_WEBSITE)
+  // Financial
+  subtotalAmount     Float             @default(0) @map("subtotal_amount")
+  taxAmount          Float             @default(0) @map("tax_amount")
+  totalAmount        Float             @default(0) @map("total_amount")
+  currency           String            @default("EUR")
+  paymentStatus      PaymentStatus     @default(PENDING) @map("payment_status")
+  paymentIntentId    String?           @map("payment_intent_id")  // Stripe/Adyen reference
+  // Notes
+  specialRequests    String?           @db.Text @map("special_requests")
+  internalNotes      String?           @db.Text @map("internal_notes")
+  // Timestamps
+  confirmedAt        DateTime?         @map("confirmed_at")
+  checkedInAt        DateTime?         @map("checked_in_at")
+  checkedOutAt       DateTime?         @map("checked_out_at")
+  cancelledAt        DateTime?         @map("cancelled_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  guest         GuestProfile       @relation(fields: [guestId], references: [id])
+  roomType      RoomType           @relation(fields: [roomTypeId], references: [id])
+  ratePlan      RatePlan?          @relation(fields: [ratePlanId], references: [id])
+  assignedRoom  Room?              @relation(fields: [assignedRoomId], references: [id])
+  addOns        ReservationAddOn[]
+  payments      Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, checkIn, checkOut])
+  @@index([guestId])
+  @@map("reservations")
+}
+
+model ReservationAddOn {
+  id              String @id @default(cuid())
+  reservationId   String @map("reservation_id")
+  addOnId         String @map("add_on_id")
+  quantity        Int    @default(1)
+  unitPrice       Float  @map("unit_price")
+  totalPrice      Float  @map("total_price")
+
+  // Relations
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  addOn       AddOn       @relation(fields: [addOnId], references: [id])
+
+  @@map("reservation_add_ons")
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  reservationId    String   @map("reservation_id")
+  amount           Float
+  currency         String   @default("EUR")
+  method           String   // "card", "bank_transfer", "cash"
+  status           PaymentStatus @default(PENDING)
+  gatewayRef       String?  @map("gateway_ref") // Stripe/Adyen payment ID
+  gatewayResponse  Json?    @map("gateway_response")
+  paidAt           DateTime? @map("paid_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@map("payments")
+}
+
+model GuestProfile {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  firstName             String   @map("first_name")
+  lastName              String   @map("last_name")
+  email                 String
+  phone                 String?
+  dateOfBirth           DateTime? @map("date_of_birth") @db.Date
+  nationality           String?
+  identityDocEncrypted  String?  @map("identity_doc_encrypted")
+  gdprConsent           Boolean  @default(false) @map("gdpr_consent")
+  gdprConsentDate       DateTime? @map("gdpr_consent_date")
+  meldescheinData       Json?    @map("meldeschein_data")
+  notes                 String?  @db.Text
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("guest_profiles")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  email        String
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  role         UserRole @default(RECEPTIONIST)
+  isActive     Boolean  @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("users")
+}
