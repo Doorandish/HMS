@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, ClipboardList, Settings, Users, LogOut } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, ClipboardList, Settings, Users, LogOut, Globe, CircleDollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/lib/tenant/tenant-context';
 
@@ -15,6 +15,8 @@ export function AdminSidebar() {
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Tape Chart', href: '/admin/calendar', icon: CalendarDays },
     { name: 'Housekeeping', href: '/admin/housekeeping', icon: ClipboardList },
+    { name: 'Rates & Inventory', href: '/admin/rates', icon: CircleDollarSign },
+    { name: 'Website Builder', href: '/admin/website-builder', icon: Globe },
     { name: 'Guests', href: '#', icon: Users },
     { name: 'Settings', href: '#', icon: Settings },
   ];
