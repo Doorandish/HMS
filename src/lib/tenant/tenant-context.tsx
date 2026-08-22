@@ -128,10 +128,10 @@ export function parseTenantPublicData(raw: {
     postalCode: raw.postalCode,
     latitude: raw.latitude,
     longitude: raw.longitude,
-    checkInTime: raw.checkInTime,
-    checkOutTime: raw.checkOutTime,
-    currency: raw.currency,
-    timezone: raw.timezone,
+    checkInTime: raw.checkInTime || '15:00',
+    checkOutTime: raw.checkOutTime || '11:00',
+    currency: raw.currency || 'EUR',
+    timezone: (raw as any).timezone || 'Europe/Berlin',
   };
 }
 
