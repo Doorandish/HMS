@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import prisma from '@/lib/db/prisma';
+import { resolveTenant } from '@/lib/tenant/tenant-resolver';
 import RateGrid from './RateGrid';
 
 async function getRatesData() {
@@ -10,16 +11,13 @@ async function getRatesData() {
     return null;
   }
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { subdomain: slug },
-    include: {
-      roomTypes: {
-        orderBy: { sortOrder: 'asc' },
-      },
-    },
-  });
-
+  const tenant = await resolveTenant(slug);
   if (!tenant) return null;
+
+  const roomTypes = await prisma.roomType.findMany({
+    where: { tenantId: tenant.id },
+    orderBy: { sortOrder: 'asc' },
+  });
 
   // Next 14 days
   const today = new Date();
@@ -27,7 +25,7 @@ async function getRatesData() {
   const endDate = new Date(today);
   endDate.setDate(today.getDate() + 14);
 
-  const roomTypeIds = tenant.roomTypes.map((rt) => rt.id);
+  const roomTypeIds = roomTypes.map((rt) => rt.id);
 
   const dailyRates = await prisma.dailyRate.findMany({
     where: {
@@ -40,7 +38,7 @@ async function getRatesData() {
   });
 
   return {
-    roomTypes: tenant.roomTypes,
+    roomTypes,
     dailyRates,
     startDate: today,
   };

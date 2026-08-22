@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import prisma from '@/lib/db/prisma';
+import { resolveTenant } from '@/lib/tenant/tenant-resolver';
 import WebsiteBuilderClient from './WebsiteBuilderClient';
 
 async function getTenantData() {
@@ -10,14 +11,14 @@ async function getTenantData() {
     return null;
   }
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { subdomain: slug },
-    include: {
-      roomTypes: true,
-    },
+  const tenant = await resolveTenant(slug);
+  if (!tenant) return null;
+
+  const roomTypes = await prisma.roomType.findMany({
+    where: { tenantId: tenant.id },
   });
 
-  return tenant;
+  return { ...tenant, roomTypes } as any; // Cast as any because of simple type alignment for MVP
 }
 
 export default async function WebsiteBuilderPage() {

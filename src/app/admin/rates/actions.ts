@@ -3,17 +3,14 @@
 import { headers } from 'next/headers';
 import prisma from '@/lib/db/prisma';
 import { revalidatePath } from 'next/cache';
+import { resolveTenant } from '@/lib/tenant/tenant-resolver';
 
 async function getTenantId() {
   const headersList = await headers();
   const slug = headersList.get('x-tenant-slug');
   if (!slug) throw new Error('Tenant not found');
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { subdomain: slug },
-    select: { id: true },
-  });
-
+  const tenant = await resolveTenant(slug);
   if (!tenant) throw new Error('Tenant not found');
   return tenant.id;
 }
