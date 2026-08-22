@@ -17,6 +17,7 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000';
 const PUBLIC_PATHS = [
   '/api/health',
   '/api/webhooks',
+  '/setup',
   '/_next',
   '/favicon.ico',
   '/robots.txt',
