@@ -40,7 +40,8 @@ export default async function ReservationsPage() {
               <th className="px-4 py-3">Room Type</th>
               <th className="px-4 py-3">Check In / Out</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 rounded-r-lg text-right">Total</th>
+              <th className="px-4 py-3 text-right">Total</th>
+              <th className="px-4 py-3 rounded-r-lg text-right">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -69,11 +70,16 @@ export default async function ReservationsPage() {
                 <td className="px-4 py-4 text-right font-medium text-gray-900">
                   {new Intl.NumberFormat('en-US', { style: 'currency', currency: res.currency }).format(res.totalAmount)}
                 </td>
+                <td className="px-4 py-4 text-right">
+                  <a href={`/admin/reservations/${res.id}`} className="text-[var(--tenant-primary)] hover:underline text-sm font-medium">
+                    Details
+                  </a>
+                </td>
               </tr>
             ))}
             {reservations.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">No reservations found.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">No reservations found.</td>
               </tr>
             )}
           </tbody>

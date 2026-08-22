@@ -6,8 +6,8 @@ import { Building, CalendarDays, CheckCircle, CreditCard, Mail, Phone, User, Log
 import { InvoicePrintView } from './InvoicePrintView';
 import { StatusActions } from './StatusActions';
 
-export default async function ReservationFolioPage({ params }: { params: { id: string } }) {
-  const reservationId = params.id;
+export default async function ReservationFolioPage({ params }: { params: Promise<{ id: string }> }) {
+  const reservationId = (await params).id;
   const reservation = await prisma.reservation.findUnique({
     where: { id: reservationId },
     include: {
