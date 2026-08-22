@@ -82,6 +82,7 @@ export function Step4Payment() {
           quantity: a.quantity,
         })),
         gdprConsent: state.guestDetails.gdprConsent,
+        paymentMethod: paymentMethod,
       };
 
       const response = await fetch('/api/v1/reservations', {
@@ -96,6 +97,11 @@ export function Step4Payment() {
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to complete reservation. Please try again.');
+      }
+
+      if (result.data?.checkoutUrl) {
+        window.location.href = result.data.checkoutUrl;
+        return;
       }
 
       const reservationNumber = result.data?.reservationNumber || 'HMS-CONFIRMED';

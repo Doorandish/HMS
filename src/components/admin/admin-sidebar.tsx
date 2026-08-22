@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CalendarDays, ClipboardList, Settings, Users, LogOut, Globe, CircleDollarSign } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, ClipboardList, Settings, Users, LogOut, Globe, CircleDollarSign, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTenant } from '@/lib/tenant/tenant-context';
 
@@ -17,7 +17,9 @@ export function AdminSidebar() {
     { name: 'Housekeeping', href: '/admin/housekeeping', icon: ClipboardList },
     { name: 'Rates & Inventory', href: '/admin/rates', icon: CircleDollarSign },
     { name: 'Website Builder', href: '/admin/website-builder', icon: Globe },
-    { name: 'Guests', href: '#', icon: Users },
+    { name: 'Guests', href: '/admin/guests', icon: Users },
+    { name: 'Reservations', href: '/admin/reservations', icon: ClipboardList },
+    { name: 'AI Assistant', href: '/admin/ai-assistant', icon: Sparkles },
     { name: 'Settings', href: '#', icon: Settings },
   ];
 

@@ -72,6 +72,34 @@ export async function upsertDailyRate(data: {
     }
 
     revalidatePath('/admin/rates');
+
+    // TRIGGER OUTBOUND CHANNEL MANAGER SYNC (Async, non-blocking)
+    // In production, you would place this in a reliable background queue (e.g. Inngest / RabbitMQ)
+    // to ensure delivery if the Channel Manager API is temporarily down.
+    try {
+      const channelManagerUrl = process.env.CHANNEX_API_URL || 'https://mock.channex.io/api/v1/restrictions';
+      if (process.env.CHANNEX_API_KEY) {
+        fetch(channelManagerUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.CHANNEX_API_KEY}`
+          },
+          body: JSON.stringify({
+            property_id: tenantId, // mapped ID
+            room_type_id: data.roomTypeId,
+            date: rateDate.toISOString(),
+            price: data.price,
+            min_stay: data.minStay,
+            max_stay: data.maxStay,
+            stop_sell: data.stopSell
+          })
+        }).catch(err => console.error('[ChannelManager] Failed to sync rate update:', err));
+      }
+    } catch (err) {
+      console.error('[ChannelManager] Error pushing update:', err);
+    }
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
