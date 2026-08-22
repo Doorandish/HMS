@@ -82,8 +82,12 @@ export function TapeChartClient({
                       const checkIn = startOfDay(new Date(res.checkIn));
                       const checkOut = startOfDay(new Date(res.checkOut));
                       
-                      const offsetDays = Math.max(0, differenceInDays(checkIn, startDate));
-                      const durationDays = differenceInDays(checkOut, checkIn);
+                      const checkInTime = checkIn.getTime();
+                      const checkOutTime = checkOut.getTime();
+                      const startTime = startDate.getTime();
+
+                      const offsetDays = Math.max(0, Math.round((checkInTime - startTime) / (1000 * 60 * 60 * 24)));
+                      const durationDays = Math.max(1, Math.round((checkOutTime - checkInTime) / (1000 * 60 * 60 * 24)));
                       
                       const leftPx = offsetDays * 96; 
                       const widthPx = durationDays * 96;
