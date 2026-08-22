@@ -35,7 +35,10 @@ export default async function CalendarPage() {
     const unassigned = await prisma.reservation.findMany({
       where: {
         tenantId,
-        assignedRoomId: null,
+        OR: [
+          { assignedRoomId: null },
+          { assignedRoomId: { isSet: false } }
+        ],
         status: { notIn: ['CANCELLED', 'NO_SHOW'] },
       }
     });
