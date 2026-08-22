@@ -3,7 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { headers } from "next/headers";
 import { resolveTenant } from "@/lib/tenant/tenant-resolver";
-import { TenantProvider, parseTenantPublicData } from "@/lib/tenant/tenant-context";
+import { TenantProvider } from "@/lib/tenant/tenant-context";
+import { parseTenantPublicData } from "@/lib/tenant/tenant-utils";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
