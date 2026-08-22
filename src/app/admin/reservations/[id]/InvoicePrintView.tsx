@@ -63,7 +63,7 @@ export function InvoicePrintView({ reservation }: { reservation: any }) {
               <tr className="border-b">
                 <td className="py-3">
                   Accommodation ({reservation.roomType.name}) <br/>
-                  <span className="text-sm text-gray-600">{format(reservation.checkIn, 'MMM d')} - {format(reservation.checkOut, 'MMM d')}</span>
+                  <span className="text-sm text-gray-600">{format(new Date(reservation.checkIn), 'MMM d')} - {format(new Date(reservation.checkOut), 'MMM d')}</span>
                 </td>
                 <td className="py-3 text-right">
                   {new Intl.NumberFormat('en-US', { style: 'currency', currency: reservation.currency }).format(reservation.subtotalAmount)}
