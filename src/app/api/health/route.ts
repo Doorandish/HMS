@@ -20,7 +20,7 @@ export async function GET() {
   };
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$runCommandRaw({ ping: 1 });
     health.services.database = 'connected';
   } catch {
     health.services.database = 'disconnected';

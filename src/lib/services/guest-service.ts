@@ -185,7 +185,7 @@ export async function exportMeldeschein(
   const guests = await prisma.guestProfile.findMany({
     where: {
       tenantId,
-      meldescheinData: { not: Prisma.DbNull },
+      meldescheinData: { not: null },
       reservations: {
         some: {
           checkIn: { gte: new Date(fromDate) },

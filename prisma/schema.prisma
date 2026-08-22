@@ -4,7 +4,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================
@@ -78,7 +79,7 @@ enum MealPlan {
 // ============================================================
 
 model Tenant {
-  id               String   @id @default(cuid())
+  id               String   @id @default(cuid()) @map("_id")
   name             String
   subdomain        String   @unique
   customDomain     String?  @unique @map("custom_domain")
@@ -121,11 +122,11 @@ model Tenant {
 }
 
 model RoomType {
-  id             String   @id @default(cuid())
+  id             String   @id @default(cuid()) @map("_id")
   tenantId       String   @map("tenant_id")
   name           String
   category       String   // Single, Double, Suite, Apartment, Parking, Workspace
-  description    String?  @db.Text
+  description    String? 
   baseOccupancy  Int      @default(2) @map("base_occupancy")
   maxOccupancy   Int      @default(2) @map("max_occupancy")
   amenities      Json     @default("[]") // ["WiFi", "TV", "MiniBar", "Balcony"]
@@ -148,12 +149,12 @@ model RoomType {
 }
 
 model Room {
-  id           String     @id @default(cuid())
+  id           String     @id @default(cuid()) @map("_id")
   roomTypeId   String     @map("room_type_id")
   roomNumber   String     @map("room_number")
   floor        Int        @default(1)
   status       RoomStatus @default(CLEAN)
-  notes        String?    @db.Text
+  notes        String?   
   isActive     Boolean    @default(true) @map("is_active")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
@@ -168,11 +169,11 @@ model Room {
 }
 
 model RatePlan {
-  id                   String             @id @default(cuid())
+  id                   String             @id @default(cuid()) @map("_id")
   tenantId             String             @map("tenant_id")
   roomTypeId           String             @map("room_type_id")
   name                 String             // "Standard", "Non-refundable", "Early Bird"
-  description          String?            @db.Text
+  description          String?           
   cancellationPolicy   CancellationPolicy @default(FREE_CANCELLATION) @map("cancellation_policy")
   mealPlan             MealPlan           @default(ROOM_ONLY) @map("meal_plan")
   priceModifier        Float              @default(1.0) @map("price_modifier") // Multiplier on base price
@@ -192,9 +193,9 @@ model RatePlan {
 }
 
 model DailyRate {
-  id                  String   @id @default(cuid())
+  id                  String   @id @default(cuid()) @map("_id")
   roomTypeId          String   @map("room_type_id")
-  date                DateTime @db.Date
+  date                DateTime
   price               Float
   availableCount      Int      @map("available_count")
   minStay             Int      @default(1) @map("min_stay")
@@ -209,15 +210,14 @@ model DailyRate {
   roomType  RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
 
   @@unique([roomTypeId, date])
-  @@index([roomTypeId, date])
   @@map("daily_rates")
 }
 
 model AddOn {
-  id            String      @id @default(cuid())
+  id            String      @id @default(cuid()) @map("_id")
   tenantId      String      @map("tenant_id")
   name          String
-  description   String?     @db.Text
+  description   String?    
   price         Float
   pricingType   PricingType @default(PER_STAY) @map("pricing_type")
   isActive      Boolean     @default(true) @map("is_active")
@@ -234,15 +234,15 @@ model AddOn {
 }
 
 model Reservation {
-  id                 String            @id @default(cuid())
+  id                 String            @id @default(cuid()) @map("_id")
   tenantId           String            @map("tenant_id")
   reservationNumber  String            @unique @map("reservation_number")
   guestId            String            @map("guest_id")
   roomTypeId         String            @map("room_type_id")
   ratePlanId         String?           @map("rate_plan_id")
   assignedRoomId     String?           @map("assigned_room_id")
-  checkIn            DateTime          @map("check_in") @db.Date
-  checkOut           DateTime          @map("check_out") @db.Date
+  checkIn            DateTime          @map("check_in")
+  checkOut           DateTime          @map("check_out")
   adults             Int               @default(1)
   children           Int               @default(0)
   status             ReservationStatus @default(CONFIRMED)
@@ -255,8 +255,8 @@ model Reservation {
   paymentStatus      PaymentStatus     @default(PENDING) @map("payment_status")
   paymentIntentId    String?           @map("payment_intent_id")  // Stripe/Adyen reference
   // Notes
-  specialRequests    String?           @db.Text @map("special_requests")
-  internalNotes      String?           @db.Text @map("internal_notes")
+  specialRequests    String?           @map("special_requests")
+  internalNotes      String?           @map("internal_notes")
   // Timestamps
   confirmedAt        DateTime?         @map("confirmed_at")
   checkedInAt        DateTime?         @map("checked_in_at")
@@ -282,7 +282,7 @@ model Reservation {
 }
 
 model ReservationAddOn {
-  id              String @id @default(cuid())
+  id              String @id @default(cuid()) @map("_id")
   reservationId   String @map("reservation_id")
   addOnId         String @map("add_on_id")
   quantity        Int    @default(1)
@@ -297,7 +297,7 @@ model ReservationAddOn {
 }
 
 model Payment {
-  id               String   @id @default(cuid())
+  id               String   @id @default(cuid()) @map("_id")
   reservationId    String   @map("reservation_id")
   amount           Float
   currency         String   @default("EUR")
@@ -317,19 +317,19 @@ model Payment {
 }
 
 model GuestProfile {
-  id                    String   @id @default(cuid())
+  id                    String   @id @default(cuid()) @map("_id")
   tenantId              String   @map("tenant_id")
   firstName             String   @map("first_name")
   lastName              String   @map("last_name")
   email                 String
   phone                 String?
-  dateOfBirth           DateTime? @map("date_of_birth") @db.Date
+  dateOfBirth           DateTime? @map("date_of_birth")
   nationality           String?
   identityDocEncrypted  String?  @map("identity_doc_encrypted")
   gdprConsent           Boolean  @default(false) @map("gdpr_consent")
   gdprConsentDate       DateTime? @map("gdpr_consent_date")
   meldescheinData       Json?    @map("meldeschein_data")
-  notes                 String?  @db.Text
+  notes                 String? 
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
@@ -343,7 +343,7 @@ model GuestProfile {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String   @id @default(cuid()) @map("_id")
   tenantId     String   @map("tenant_id")
   email        String
   passwordHash String   @map("password_hash")

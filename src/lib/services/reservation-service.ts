@@ -369,10 +369,6 @@ export async function createReservation(
       });
 
       return reservation;
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      timeout: 10000,
     }
   );
 }
