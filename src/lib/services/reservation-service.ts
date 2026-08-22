@@ -163,8 +163,25 @@ export async function searchAvailability(
 
     if (hasRestrictionBlock || nightlyPrices.length !== nights) continue;
 
+    let roomRatePlans = roomType.ratePlans;
+    if (roomRatePlans.length === 0) {
+      // Self-healing: auto-create a Standard Rate if missing
+      const defaultPlan = await prisma.ratePlan.create({
+        data: {
+          tenantId,
+          roomTypeId: roomType.id,
+          name: 'Standard Rate',
+          cancellationPolicy: 'FREE_CANCELLATION' as any,
+          mealPlan: 'ROOM_ONLY' as any,
+          priceModifier: 1.0,
+          isActive: true
+        }
+      });
+      roomRatePlans = [defaultPlan];
+    }
+
     // Calculate total prices for each rate plan
-    const ratePlanPricing = roomType.ratePlans.map((plan) => {
+    const ratePlanPricing = roomRatePlans.map((plan) => {
       const planNightlyPrices = nightlyPrices.map((np) => ({
         date: np.date,
         price: Math.round(np.price * plan.priceModifier * 100) / 100,
