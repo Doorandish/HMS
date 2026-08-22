@@ -10,7 +10,7 @@ export default async function CalendarPage() {
   const days = Array.from({ length: 14 }).map((_, i) => addDays(startDate, i));
   const endDate = addDays(startDate, 14);
 
-  const rooms = await prisma.room.findMany({
+  let rooms = await prisma.room.findMany({
     include: {
       roomType: true,
       reservations: {
@@ -27,6 +27,66 @@ export default async function CalendarPage() {
       { roomNumber: 'asc' },
     ],
   });
+
+  const tenantId = rooms[0]?.roomType?.tenantId;
+
+  if (tenantId) {
+    // Self-heal: find unassigned reservations and auto-assign them
+    const unassigned = await prisma.reservation.findMany({
+      where: {
+        tenantId,
+        assignedRoomId: null,
+        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+      }
+    });
+
+    if (unassigned.length > 0) {
+      let madeChanges = false;
+      for (const res of unassigned) {
+        const availableRooms = await prisma.room.findMany({
+          where: { roomTypeId: res.roomTypeId, isActive: true },
+          include: {
+            reservations: {
+              where: {
+                checkIn: { lt: res.checkOut },
+                checkOut: { gt: res.checkIn },
+                status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+              }
+            }
+          }
+        });
+        const freeRoom = availableRooms.find(r => r.reservations.length === 0);
+        if (freeRoom) {
+          await prisma.reservation.update({
+            where: { id: res.id },
+            data: { assignedRoomId: freeRoom.id }
+          });
+          madeChanges = true;
+        }
+      }
+
+      if (madeChanges) {
+        // Re-fetch rooms with updated reservations
+        rooms = await prisma.room.findMany({
+          include: {
+            roomType: true,
+            reservations: {
+              where: {
+                checkIn: { lt: endDate },
+                checkOut: { gt: startDate },
+                status: { notIn: ['CANCELLED', 'NO_SHOW'] }
+              },
+              include: { guest: true },
+            },
+          },
+          orderBy: [
+            { roomType: { name: 'asc' } },
+            { roomNumber: 'asc' },
+          ],
+        });
+      }
+    }
+  }
 
   const groupedRooms = rooms.reduce((acc, room) => {
     const type = room.roomType.name;

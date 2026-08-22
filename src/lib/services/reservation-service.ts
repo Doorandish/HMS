@@ -358,6 +358,26 @@ export async function createReservation(
       const totalAmount =
         Math.round((subtotal + taxAmount + addOnTotal) * 100) / 100;
 
+      // Auto-assign to an available physical room
+      const rooms = await tx.room.findMany({
+        where: {
+          roomTypeId: input.roomTypeId,
+          isActive: true,
+        },
+        include: {
+          reservations: {
+            where: {
+              checkIn: { lt: checkOutDate },
+              checkOut: { gt: checkInDate },
+              status: { notIn: ['CANCELLED', 'NO_SHOW'] },
+            }
+          }
+        }
+      });
+      
+      const availableRoom = rooms.find(r => r.reservations.length === 0);
+      const assignedRoomId = availableRoom ? availableRoom.id : null;
+
       // Create the reservation
       const reservation = await tx.reservation.create({
         data: {
@@ -365,6 +385,7 @@ export async function createReservation(
           reservationNumber: generateReservationNumber(),
           guestId: input.guestId,
           roomTypeId: input.roomTypeId,
+          assignedRoomId: assignedRoomId,
           ratePlanId: input.ratePlanId || null,
           checkIn: checkInDate,
           checkOut: checkOutDate,
